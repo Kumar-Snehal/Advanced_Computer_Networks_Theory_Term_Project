@@ -19,7 +19,8 @@ using std::size_t;
 using std::string;
 using std::vector;
 
-struct ComponentResult {
+struct ComponentResult
+{
     int component_id{};
     int host_count{};
     double placement_share{};
@@ -28,10 +29,10 @@ struct ComponentResult {
     double utilization{};
 
     // Theoretical values
-    double theory_W{};   // Sojourn time
-    double theory_Wq{};  // Queueing delay
-    double theory_L{};   // Avg. number in system
-    double theory_Lq{};  // Avg. queue length
+    double theory_W{};  // Sojourn time
+    double theory_Wq{}; // Queueing delay
+    double theory_L{};  // Avg. number in system
+    double theory_Lq{}; // Avg. queue length
 
     // Simulated values
     double sim_W{};
@@ -45,7 +46,8 @@ struct ComponentResult {
     double error_Lq{};
 };
 
-struct EndToEndResult {
+struct EndToEndResult
+{
     double theory_queue_delay{};
     double theory_service_time{};
     double theory_comm_delay{};
@@ -59,8 +61,10 @@ struct EndToEndResult {
     double error_e2e{};
 };
 
-static double percentage_error(double theoretical_value, double simulated_value) {
-    if (std::abs(theoretical_value) < 1e-12) return 0.0;
+static double percentage_error(double theoretical_value, double simulated_value)
+{
+    if (std::abs(theoretical_value) < 1e-12)
+        return 0.0;
     return std::abs(simulated_value - theoretical_value) / std::abs(theoretical_value) * 100.0;
 }
 
@@ -68,18 +72,22 @@ static double percentage_error(double theoretical_value, double simulated_value)
 // 1) Normalized geometric distribution for component shares
 //    p_i = (1-r) r^(i-1) / (1-r^K)
 // ------------------------------------------------------------
-vector<double> geometric_component_shares(int K, double r) {
-    if (K <= 0) {
+vector<double> geometric_component_shares(int K, double r)
+{
+    if (K <= 0)
+    {
         throw std::invalid_argument("K must be positive.");
     }
-    if (!(r > 0.0 && r < 1.0)) {
+    if (!(r > 0.0 && r < 1.0))
+    {
         throw std::invalid_argument("r must satisfy 0 < r < 1.");
     }
 
     vector<double> p(K);
     double denom = 1.0 - std::pow(r, K);
 
-    for (int i = 0; i < K; ++i) {
+    for (int i = 0; i < K; ++i)
+    {
         p[i] = (1.0 - r) * std::pow(r, i) / denom;
     }
     return p;
@@ -89,18 +97,22 @@ vector<double> geometric_component_shares(int K, double r) {
 // 2) Convert fractional shares into integer host counts
 //    Ensures sum(n_i) = N and each n_i >= 1
 // ------------------------------------------------------------
-vector<int> allocate_hosts(int N, const vector<double>& p) {
+vector<int> allocate_hosts(int N, const vector<double> &p)
+{
     int K = static_cast<int>(p.size());
-    if (N < K) {
+    if (N < K)
+    {
         throw std::invalid_argument("N must be at least K so that each component can have at least one host.");
     }
 
     vector<int> n(K);
 
     // Initial rounding
-    for (int i = 0; i < K; ++i) {
+    for (int i = 0; i < K; ++i)
+    {
         n[i] = static_cast<int>(std::lround(N * p[i]));
-        if (n[i] < 1) n[i] = 1;
+        if (n[i] < 1)
+            n[i] = 1;
     }
 
     // Fix total count to exactly N
@@ -110,17 +122,23 @@ vector<int> allocate_hosts(int N, const vector<double>& p) {
     vector<int> order(K);
     std::iota(order.begin(), order.end(), 0);
     std::sort(order.begin(), order.end(),
-              [&](int a, int b) { return p[a] > p[b]; });
+              [&](int a, int b)
+              { return p[a] > p[b]; });
 
     int idx = 0;
-    while (diff != 0) {
+    while (diff != 0)
+    {
         int j = order[idx % K];
 
-        if (diff > 0) {
+        if (diff > 0)
+        {
             n[j] += 1;
             diff -= 1;
-        } else {
-            if (n[j] > 1) {
+        }
+        else
+        {
+            if (n[j] > 1)
+            {
                 n[j] -= 1;
                 diff += 1;
             }
@@ -139,18 +157,20 @@ vector<ComponentResult> compute_theoretical_metrics(
     int K,
     double r,
     double global_arrival_rate,
-    const vector<double>& service_rates)
+    const vector<double> &service_rates)
 {
     vector<double> p = geometric_component_shares(K, r);
     vector<int> n = allocate_hosts(N, p);
 
     vector<ComponentResult> results(K);
 
-    for (int i = 0; i < K; ++i) {
+    for (int i = 0; i < K; ++i)
+    {
         double lambda_per_host = global_arrival_rate / static_cast<double>(n[i]);
         double mu = service_rates[i];
 
-        if (lambda_per_host >= mu) {
+        if (lambda_per_host >= mu)
+        {
             throw std::runtime_error("System is unstable for component " + std::to_string(i + 1));
         }
 
@@ -181,7 +201,8 @@ vector<ComponentResult> compute_theoretical_metrics(
 //    - Generate exponential service times
 //    - Compute W, Wq, L, Lq
 // ------------------------------------------------------------
-struct MM1SimulationResult {
+struct MM1SimulationResult
+{
     double sim_W{};
     double sim_Wq{};
     double sim_L{};
@@ -195,13 +216,16 @@ MM1SimulationResult simulate_mm1_queue(
     int warmup_jobs = 5000,
     unsigned seed = 1)
 {
-    if (arrival_rate <= 0.0 || service_rate <= 0.0) {
+    if (arrival_rate <= 0.0 || service_rate <= 0.0)
+    {
         throw std::invalid_argument("Arrival and service rates must be positive.");
     }
-    if (arrival_rate >= service_rate) {
+    if (arrival_rate >= service_rate)
+    {
         throw std::runtime_error("Queue is unstable because arrival_rate must be < service_rate.");
     }
-    if (warmup_jobs >= total_jobs) {
+    if (warmup_jobs >= total_jobs)
+    {
         throw std::invalid_argument("warmup_jobs must be smaller than total_jobs.");
     }
 
@@ -216,16 +240,19 @@ MM1SimulationResult simulate_mm1_queue(
 
     // Generate arrival times and service times
     arrival_times[0] = inter_arrival_dist(rng);
-    for (int i = 1; i < total_jobs; ++i) {
+    for (int i = 1; i < total_jobs; ++i)
+    {
         arrival_times[i] = arrival_times[i - 1] + inter_arrival_dist(rng);
     }
-    for (int i = 0; i < total_jobs; ++i) {
+    for (int i = 0; i < total_jobs; ++i)
+    {
         service_times[i] = service_time_dist(rng);
     }
 
     // Single-server FCFS queue
     double server_available_time = 0.0;
-    for (int i = 0; i < total_jobs; ++i) {
+    for (int i = 0; i < total_jobs; ++i)
+    {
         double start_service_time = std::max(arrival_times[i], server_available_time);
         double finish_time = start_service_time + service_times[i];
 
@@ -240,7 +267,8 @@ MM1SimulationResult simulate_mm1_queue(
     double sum_W = 0.0;
     int count = total_jobs - warmup_jobs;
 
-    for (int i = warmup_jobs; i < total_jobs; ++i) {
+    for (int i = warmup_jobs; i < total_jobs; ++i)
+    {
         sum_Wq += waiting_times[i];
         sum_W += system_times[i];
     }
@@ -258,8 +286,10 @@ MM1SimulationResult simulate_mm1_queue(
 // ------------------------------------------------------------
 // 5) Full evaluation: theory vs simulation
 // ------------------------------------------------------------
-int main() {
-    try {
+int main()
+{
+    try
+    {
         // -----------------------------
         // Model parameters
         // -----------------------------
@@ -279,20 +309,19 @@ int main() {
         // Theoretical results
         // -----------------------------
         vector<ComponentResult> comp = compute_theoretical_metrics(
-            N, K, r, global_arrival_rate, service_rates
-        );
+            N, K, r, global_arrival_rate, service_rates);
 
         // -----------------------------
         // Simulation results
         // -----------------------------
-        for (int i = 0; i < K; ++i) {
+        for (int i = 0; i < K; ++i)
+        {
             MM1SimulationResult sim = simulate_mm1_queue(
                 comp[i].arrival_rate_per_host,
                 service_rates[i],
                 50000,
                 5000,
-                static_cast<unsigned>(i + 1)
-            );
+                static_cast<unsigned>(i + 1));
 
             comp[i].sim_W = sim.sim_W;
             comp[i].sim_Wq = sim.sim_Wq;
@@ -310,7 +339,8 @@ int main() {
         // -----------------------------
         EndToEndResult e2e;
 
-        for (const auto& c : comp) {
+        for (const auto &c : comp)
+        {
             e2e.theory_queue_delay += c.theory_Wq;
             e2e.sim_queue_delay += c.sim_Wq;
             e2e.theory_service_time += 1.0 / service_rates[c.component_id - 1];
@@ -343,7 +373,8 @@ int main() {
              << "\tErr_L(%)"
              << "\tErr_Lq(%)\n";
 
-        for (const auto& c : comp) {
+        for (const auto &c : comp)
+        {
             cout << "C" << c.component_id
                  << "\t" << c.host_count
                  << "\t" << c.theory_W
@@ -372,7 +403,8 @@ int main() {
 
         return 0;
     }
-    catch (const std::exception& ex) {
+    catch (const std::exception &ex)
+    {
         std::cerr << "Error: " << ex.what() << std::endl;
         return 1;
     }
