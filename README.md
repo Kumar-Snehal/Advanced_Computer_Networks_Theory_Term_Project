@@ -54,4 +54,4 @@ In this context, the analysis must find the following:
 
 ## Evaluation & Results
 
-The theoretical queueing and network models are verified using a discrete-event simulation (implemented in Python/MATLAB/C++) to compare and validate the theoretical queueing results against simulation-based results.
+The theoretical queueing and network models are verified using a discrete-event simulation (implemented in Python/Jupyter Notebook/C++) to compare and validate the theoretical queueing results against simulation-based results.
