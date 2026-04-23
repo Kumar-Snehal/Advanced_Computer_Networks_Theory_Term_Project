@@ -55,3 +55,16 @@ In this context, the analysis must find the following:
 ## Evaluation & Results
 
 The theoretical queueing and network models are verified using a discrete-event simulation (implemented in Python/Jupyter Notebook/C++) to compare and validate the theoretical queueing results against simulation-based results.
+
+## Installation & Setup
+
+It is recommended to use a Python environment with Python version 3.12 or greater. Set up a virtual environment with the command:
+
+```python -m venv .venv```
+and activate it:
+```source .venv/bin/activate``` (for Unix/Linux/Mac) 
+```./.venv/Scripts/activate``` (for Windows).
+
+The libraries are mentioned in the `requirements.txt` file. You can install them using pip:
+
+```pip install -r requirements.txt```
